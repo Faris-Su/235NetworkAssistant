@@ -1,0 +1,27 @@
+<Window
+    x:Class="RuijieNetworkAssistant.Views.MachineSoulWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="机魂安抚中"
+    Width="520"
+    Height="570"
+    MinWidth="420"
+    MinHeight="470"
+    Background="#F1F1F1"
+    FontFamily="Microsoft YaHei UI, Segoe UI"
+    ResizeMode="CanResize"
+    ShowInTaskbar="False"
+    SizeToContent="Manual"
+    TextOptions.TextFormattingMode="Display"
+    UseLayoutRounding="True"
+    WindowStartupLocation="CenterOwner">
+    <Border Margin="10" Background="#F1F1F1">
+        <Image
+            x:Name="AnimationImage"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            MaxWidth="490"
+            MaxHeight="490"
+            Stretch="Uniform" />
+    </Border>
+</Window>

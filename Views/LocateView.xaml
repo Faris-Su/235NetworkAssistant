@@ -1,0 +1,169 @@
+<UserControl
+    x:Class="RuijieNetworkAssistant.Views.LocateView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="640"
+    d:DesignWidth="1000">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Style="{StaticResource PageTitleStyle}" Text="定位" />
+            <TextBlock
+                Margin="10,0,0,0"
+                VerticalAlignment="Center"
+                Style="{StaticResource MutedTextStyle}"
+                Text="输入 IP 或 MAC → 先按 ARP 换成 MAC，再按标准转发表（BRIDGE-MIB）找端口"
+                TextTrimming="CharacterEllipsis"
+                ToolTip="顺序很重要：IP 只存在于有三层 SVI 的设备上，所以先查 ARP 拿到 MAC，再去二层设备的转发表里找端口。默认命中即停。" />
+        </WrapPanel>
+
+        <Border
+            Grid.Row="1"
+            Margin="0,0,0,6"
+            Style="{StaticResource PanelBorderStyle}">
+            <StackPanel>
+                <WrapPanel>
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="要定位的" />
+                    <TextBox
+                        Width="180"
+                        Text="{Binding QueryText, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="IP（203.0.113.177）或 MAC（02:00:00:00:00:01 / 0200.0000.0001）" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Community" />
+                    <TextBox
+                        Width="130"
+                        Text="{Binding Community, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="SNMP 只读团体名；只存在内存里，不写配置文件" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="超时(ms)" />
+                    <TextBox Width="60" Text="{Binding TimeoutMs, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="重试" />
+                    <TextBox Width="40" Text="{Binding Retries, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="并发" />
+                    <TextBox Width="40" Text="{Binding Concurrency, UpdateSourceTrigger=PropertyChanged}" />
+                </WrapPanel>
+
+                <WrapPanel Margin="0,6,0,0">
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="范围" />
+                    <ComboBox
+                        Width="150"
+                        ItemsSource="{Binding Buildings}"
+                        SelectedItem="{Binding BuildingFilter, Mode=TwoWay}"
+                        ToolTip="按资源库楼栋限定范围（留空=全部）" />
+                    <TextBox
+                        Width="110"
+                        Text="{Binding KeywordFilter, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="按 IP / 名称过滤候选设备" />
+                    <Button Command="{Binding RefreshDevicesCommand}" Content="刷新候选" />
+                    <Button Command="{Binding SelectAllCommand}" Content="全选" />
+                    <Button Command="{Binding ClearSelectionCommand}" Content="清空" />
+                    <Button
+                        Margin="10,0,0,0"
+                        Command="{Binding StartCommand}"
+                        Content="开始定位"
+                        Style="{StaticResource PrimaryButtonStyle}" />
+                    <Button Command="{Binding StopCommand}" Content="停止" Style="{StaticResource DangerButtonStyle}" />
+                    <Button Command="{Binding ExportCsvCommand}" Content="导出 CSV" />
+                    <CheckBox
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        Content="命中即停"
+                        IsChecked="{Binding StopOnFirstHit, Mode=TwoWay}"
+                        ToolTip="找到就停（默认）。排查 MAC 漂移/私接时可以关掉，把所有命中的设备都列出来。" />
+                    <CheckBox
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        Content="逐跳追踪"
+                        IsChecked="{Binding TraceMode, Mode=TwoWay}"
+                        ToolTip="从选中列表的第一台开始，顺着 LLDP 邻居一路往下追（通常 2~5 跳就到底），不用把几百台全扫一遍。默认关。" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <DataGrid x:Name="LocDevicesGrid" Grid.Column="0" MinHeight="120" ItemsSource="{Binding Devices}">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Width="34">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn
+                        Binding="{Binding Ip}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="IP"
+                        Width="105" />
+                    <DataGridTextColumn
+                        Binding="{Binding Name}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="名称"
+                        Width="70" />
+                    <DataGridTextColumn
+                        Binding="{Binding Building}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="楼栋"
+                        Width="65" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <DataGrid x:Name="LocHitsGrid" Grid.Column="2" MinHeight="120" ItemsSource="{Binding Hits}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Binding="{Binding Kind}" Header="步骤" Width="46" />
+                    <DataGridTextColumn Binding="{Binding Status}" Header="结论" Width="66" />
+                    <DataGridTextColumn
+                        Binding="{Binding Port}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="端口"
+                        Width="80" />
+                    <DataGridTextColumn
+                        Binding="{Binding DeviceIp}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="设备 IP"
+                        Width="100" />
+                    <DataGridTextColumn
+                        Binding="{Binding DeviceName}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="设备名"
+                        Width="110" />
+                    <DataGridTextColumn
+                        Binding="{Binding Building}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="楼栋"
+                        Width="80" />
+                    <DataGridTextColumn Binding="{Binding Vlan}" Header="VLAN" Width="60" />
+                    <DataGridTextColumn
+                        Binding="{Binding Note}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="说明"
+                        Width="260" />
+                    <DataGridTextColumn Binding="{Binding ElapsedMs}" Header="耗时(ms)" Width="70" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Margin="0,6,0,0">
+            <TextBlock FontWeight="SemiBold" Text="{Binding SummaryText}" />
+            <TextBlock FontWeight="SemiBold" Text="{Binding ProgressText}" />
+            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding StatusHint}" TextWrapping="Wrap" />
+        </StackPanel>
+    </Grid>
+</UserControl>

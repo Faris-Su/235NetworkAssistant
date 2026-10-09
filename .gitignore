@@ -1,0 +1,34 @@
+# Build and publish output
+bin/
+obj/
+.vs/
+artifacts/
+publish/
+
+# Machine-local Codex / agent state and test captures
+.agents/
+work/
+snapshots/
+HANDOFF.md
+
+# User-specific settings, credentials, and IDE state
+*.user
+*.suo
+*.log
+*.pdb
+*.cache
+appsettings.Local.json
+settings.json
+snmp-devices.json
+resource-library.json
+
+# Imported/exported campus inventories and address books
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+
+# OS noise
+Thumbs.db
+Desktop.ini
+.DS_Store

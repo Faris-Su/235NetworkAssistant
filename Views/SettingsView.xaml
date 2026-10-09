@@ -1,0 +1,310 @@
+<UserControl
+    x:Class="RuijieNetworkAssistant.Views.SettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="clr-namespace:RuijieNetworkAssistant.Helpers"
+    xmlns:controls="clr-namespace:RuijieNetworkAssistant.Views.Controls"
+    mc:Ignorable="d"
+    d:DesignHeight="640"
+    d:DesignWidth="1000">
+
+    <!-- 内容自然排布；超过窗口高度时由外层滚动，避免把空白强行分配给预览区域。 -->
+    <Grid x:Name="SettingsPageHost">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+                    <TextBlock Style="{StaticResource PageTitleStyle}" Text="设置" />
+                    <TextBlock
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource MutedTextStyle}"
+                        Text="{Binding DataRootText}" />
+                </WrapPanel>
+
+                <Grid x:Name="SettingsColumnsGrid" Grid.Row="1" Margin="0,0,0,8" SizeChanged="SettingsColumnsGrid_SizeChanged">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel x:Name="LibraryAndPreviewColumn" Grid.Row="0" Grid.Column="0">
+                    <Border Style="{StaticResource PanelBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="网络资源库" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding SwitchCountText}" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding VlanCountText}" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding LocationCountText}" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding SourceFilesText}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding LastImportedText}" />
+
+                            <WrapPanel Margin="0,8,0,0">
+                                <Button Command="{Binding AnalyzeExcelCommand}" Content="1. 选择 Excel 生成预览" Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button Command="{Binding WriteLibraryCommand}" Content="2. 写入资源库" Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button Command="{Binding ReloadRepositoryCommand}" Content="重新加载资源库" />
+                            </WrapPanel>
+
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Command="{Binding ExportLibraryCommand}" Content="导出 CSV" />
+                                <Button Command="{Binding ClearLibraryCommand}" Content="清空资源库" Style="{StaticResource DangerButtonStyle}" />
+                                <Button Command="{Binding OpenBackupFolderCommand}" Content="打开备份目录" />
+                            </WrapPanel>
+
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                FontWeight="SemiBold"
+                                Text="{Binding PreviewSummary}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Foreground="{StaticResource AccentBrush}"
+                                Text="{Binding WriteStateText}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{Binding PreviewFile, StringFormat=文件：{0}}" />
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="导入流程：Excel → 解析 → 导入预览（新增/更新/跳过/异常）→ 用户确认 → 写入本地资源库。原始 Excel 永不被修改；资源库为本地 JSON，运行时不读 Excel。" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Margin="0,8,0,0" Style="{StaticResource PanelBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Style="{StaticResource SectionTitleStyle}" Text="导入预览" />
+                            <DataGrid
+                                Grid.Row="1"
+                                Height="300"
+                                Margin="0,4,0,0"
+                                ItemsSource="{Binding PreviewItems}"
+                                ScrollViewer.HorizontalScrollBarVisibility="Visible"
+                                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                EnableRowVirtualization="True"
+                                EnableColumnVirtualization="True"
+                                VirtualizingPanel.IsVirtualizing="True"
+                                VirtualizingPanel.VirtualizationMode="Recycling"
+                                VirtualizingPanel.ScrollUnit="Pixel">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Binding="{Binding Category}" Header="类别" Width="Auto" />
+                                    <DataGridTextColumn Binding="{Binding Target}" Header="对象" Width="Auto" />
+                                    <DataGridTextColumn Binding="{Binding Key}" Header="键" Width="Auto" />
+                                    <DataGridTextColumn Binding="{Binding Display}" Header="内容" Width="Auto" />
+                                    <DataGridTextColumn Binding="{Binding SourceSheet}" Header="工作表" Width="Auto" />
+                                    <DataGridTextColumn Binding="{Binding SourceRow}" Header="行" Width="Auto" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                    </StackPanel>
+
+                    <Border x:Name="SettingsOptionsPanel" Grid.Row="0" Grid.Column="2" Style="{StaticResource PanelBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="性能与本地设置" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                    <!-- 第 3 列给「退格发 DEL(0x7F)」。原来只有 2 列却写了 Grid.Column="2"，
+                                         越界的列会被 WPF 塞回最后一列 → 和「终端刷新间隔」输入框叠在一起。 -->
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="32" />
+                                    <RowDefinition Height="32" />
+                                    <RowDefinition Height="32" />
+                                    <RowDefinition Height="32" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="终端缓冲上限(字符)" />
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding TerminalBufferChars, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="终端刷新间隔(ms)" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding TerminalFlushIntervalMs, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <CheckBox
+                                    Grid.Row="1"
+                                    Grid.Column="2"
+                                    Margin="12,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Content="退格发 DEL(0x7F)"
+                                    IsChecked="{Binding CliBackspaceSendsDel, Mode=TwoWay}"
+                                    ToolTip="默认不勾 = 退格发送 Ctrl-H(0x08)，多数锐捷/思科设备认这个；如果退格没用或显示乱码，勾上改成 0x7F（Linux 服务器常用）" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="备份目录" />
+                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding BackupDirectory, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="日志等级" />
+                                <ComboBox
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    ItemsSource="{Binding LogLevelOptions}"
+                                    SelectedItem="{Binding LogLevelSetting, Mode=TwoWay}" />
+
+                            </Grid>
+
+                            <!-- 外观：字体档位（小屏可读性优先，界面与 CLI 独立） -->
+                            <TextBlock Margin="0,10,0,0" Style="{StaticResource SectionTitleStyle}" Text="外观" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="界面字体" />
+                                <ComboBox
+                                    Grid.Row="0"
+                                    Grid.Column="1"
+                                    ItemsSource="{Binding FontScaleOptions}"
+                                    SelectedItem="{Binding UiFontScale, Mode=TwoWay}" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="CLI 字体" />
+                                <ComboBox
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    ItemsSource="{Binding FontScaleOptions}"
+                                    SelectedItem="{Binding CliFontScale, Mode=TwoWay}" />
+                            </Grid>
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                FontSize="14"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="{Binding ShortcutHelp}"
+                                TextWrapping="Wrap" />
+
+                            <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                                <Button Command="{Binding SaveSettingsCommand}" Content="保存设置" Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button
+                                    Command="{Binding ApplyFieldLaptopPresetCommand}"
+                                    Content="外勤小电脑预设"
+                                    ToolTip="面向 Celeron N4120 / 8GB 这类外勤机：终端刷新 80→120 ms、缓冲 20 万→6 万字符（点完记得保存设置）。真正的瓶颈是单核与渲染，不是内存。" />
+                                <CheckBox
+                                    Content="记住连接参数（密码不落盘）"
+                                    IsChecked="{Binding RememberConnectionSettings, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="Release 默认日志等级：Info / Warning / Error；CLI 原始输出不写入普通日志。" />
+
+                    <!-- 关于：产品名称 / 版本 / 开发者（信息来自 AppInfo 单一来源） -->
+                    <TextBlock Margin="0,10,0,0" Style="{StaticResource SectionTitleStyle}" Text="SNMP（只读）" />
+                    <CheckBox
+                        Margin="0,4,0,0"
+                        Content="启用概览页 SNMP 设备信息卡片"
+                        IsChecked="{Binding SnmpEnabled, Mode=TwoWay}"
+                        ToolTip="只读查询设备信息，不会用 SNMP 修改配置" />
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="Community" />
+                        <controls:PasswordRevealBox
+                            x:Name="SnmpCommunityBox"
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Password="{Binding SnmpCommunity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="SNMP Community（只读团体名）：默认隐藏，点 👁 显示明文；不写日志、不落盘" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="UDP 端口" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SnmpPort, UpdateSourceTrigger=LostFocus}" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="超时(ms)" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SnmpTimeoutMs, UpdateSourceTrigger=LostFocus}" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="重试次数" />
+                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SnmpRetries, UpdateSourceTrigger=LostFocus}" />
+                    </Grid>
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        FontSize="14"
+                        Foreground="{StaticResource TextMutedBrush}"
+                        Text="{Binding SnmpHint}"
+                        TextWrapping="Wrap" />
+
+                    <!-- 关于：产品名称 / 版本 / 开发者（信息来自 AppInfo 单一来源） -->
+                            <Separator Margin="0,10,0,6" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="关于" />
+                            <TextBlock
+                                FontSize="15"
+                                FontWeight="SemiBold"
+                                Text="{x:Static helpers:AppInfo.ChineseName}" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{x:Static helpers:AppInfo.EnglishName}" />
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource AccentBrush}"
+                                Text="{x:Static helpers:AppInfo.DisplayVersion}" />
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{x:Static helpers:AppInfo.Description}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{x:Static helpers:AppInfo.DeveloperLine}" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{x:Static helpers:AppInfo.Copyright}" />
+                            <Button
+                                x:Name="MachineSoulButton"
+                                Margin="0,10,0,0"
+                                HorizontalAlignment="Left"
+                                AutomationProperties.Name="点击安抚机魂"
+                                Click="OpenMachineSoul_Click"
+                                Content="点击安抚机魂"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                ToolTip="播放时隙的 Overload 动画彩蛋" />
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                FontSize="14"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="{x:Static helpers:AppInfo.CompatibilityNote}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <TextBlock
+                    Grid.Row="2"
+                    Style="{StaticResource MutedTextStyle}"
+                    Text="设计文档：docs/product.md、docs/architecture.md、docs/commands.md、docs/ui.md、docs/roadmap.md（Source of Truth）" />
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

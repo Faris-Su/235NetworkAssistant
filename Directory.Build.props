@@ -1,0 +1,39 @@
+<Project>
+
+  <!--
+    构建兼容性开关（只影响构建，不影响产品运行时与依赖）。
+
+    现象：某些机器（CPU / Windows CET 组合）上 .NET SDK 自带的编译器 csc.exe / vbc.exe
+    会在启动时直接崩溃（退出码 -1073741819 / 0xC0000005），dotnet build 报
+    "csc.exe 已退出，代码为 -1073741819"。
+
+    解决：把环境变量 RUJIE_LEGACY_CSC_PATH 指向 Microsoft.Net.Compilers.Toolset 包内的
+    net472 目录（该版本的 Roslyn 编译器在同一台机器上可正常工作），例如：
+      RUJIE_LEGACY_CSC_PATH=%USERPROFILE%\.nuget\packages\microsoft.net.compilers.toolset\4.14.0\tasks\net472
+
+    2026-09-21：**改成自动检测** —— 只要本机 NuGet 缓存里存在那套编译器，就自动用它，
+    不再要求先设环境变量（于是 `dotnet build` / `发布.cmd` 可以直接跑，不必再包一层脚本）。
+    优先级：显式环境变量 > 自动检测到的 NuGet 缓存；两者都没有时保持原样（用 SDK 自带编译器）。
+    这是**仓库内的构建配置**，不写注册表、不改系统设置、不影响产品运行时。
+  -->
+  <PropertyGroup>
+    <_RuijieLegacyCscCandidate>$(USERPROFILE)\.nuget\packages\microsoft.net.compilers.toolset\4.14.0\tasks\net472</_RuijieLegacyCscCandidate>
+    <_RuijieLegacyCsc Condition="Exists('$(_RuijieLegacyCscCandidate)\csc.exe')">$(_RuijieLegacyCscCandidate)</_RuijieLegacyCsc>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RUJIE_LEGACY_CSC_PATH)' != ''">
+    <CscToolPath>$(RUJIE_LEGACY_CSC_PATH)</CscToolPath>
+    <CscToolExe>csc.exe</CscToolExe>
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+
+  <!-- 没有显式环境变量时，用自动检测到的备用编译器（存在才生效） -->
+  <PropertyGroup Condition="'$(RUJIE_LEGACY_CSC_PATH)' == '' AND '$(_RuijieLegacyCsc)' != ''">
+    <CscToolPath>$(_RuijieLegacyCsc)</CscToolPath>
+    <CscToolExe>csc.exe</CscToolExe>
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+
+  <!-- 旧写法（仅环境变量生效）保留在上面两个 PropertyGroup 里，逻辑等价 -->
+
+</Project>

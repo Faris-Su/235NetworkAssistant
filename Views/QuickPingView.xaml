@@ -1,0 +1,295 @@
+<UserControl
+    x:Class="RuijieNetworkAssistant.Views.QuickPingView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="640"
+    d:DesignWidth="1000">
+
+    <UserControl.Resources>
+        <!-- 图形模式的格子：既要能点（点了跳到表格对应行），又要保持原来的方块外观 -->
+        <Style x:Key="GraphCellButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="HoverLayer" Background="Transparent">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- 鼠标悬停给一点反馈：不然用户不知道格子是可以点的 -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HoverLayer" Property="Background" Value="#26000000" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Style="{StaticResource PageTitleStyle}" Text="QuickPing" />
+            <TextBlock
+                Margin="10,0,0,0"
+                VerticalAlignment="Center"
+                Style="{StaticResource MutedTextStyle}"
+                Text="扫描一段 IP，查看在线状态"
+                TextTrimming="CharacterEllipsis"
+                ToolTip="不依赖任何设备连接，只发 ICMP 探测包。很多交换机默认忽略 ICMP，所以「超时」不等于设备不在线。" />
+        </WrapPanel>
+
+        <Border
+            Grid.Row="1"
+            Margin="0,0,0,6"
+            Style="{StaticResource PanelBorderStyle}">
+            <StackPanel>
+                <!-- 主输入：IP 前三段 + 从/到（现场习惯的写法），回车即开始 -->
+                <WrapPanel>
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="IP 地址" />
+                    <TextBox
+                        Width="110"
+                        Text="{Binding IpPrefix, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="前三段，例如 192.0.2">
+                        <TextBox.InputBindings>
+                            <!-- 回车即开始：这是 QuickPing 的"快"字所在 -->
+                            <KeyBinding Key="Return" Command="{Binding PingCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="从" />
+                    <TextBox Width="44" Text="{Binding RangeStart, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding PingCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <TextBlock Style="{StaticResource InlineLabelStyle}" Text="到" />
+                    <TextBox Width="44" Text="{Binding RangeEnd, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding PingCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <TextBlock Style="{StaticResource InlineLabelStyle}" Text="超时(ms)" />
+                    <TextBox Width="50" Text="{Binding TimeoutMs, UpdateSourceTrigger=PropertyChanged}" ToolTip="默认 200ms（经典 QuickPing 的默认值）；内网一般毫秒级，短一点扫得快" />
+                    <TextBlock Style="{StaticResource InlineLabelStyle}" Text="线程" />
+                    <TextBox Width="40" Text="{Binding Concurrency, UpdateSourceTrigger=PropertyChanged}" ToolTip="并发线程数（1-32），默认 20" />
+                    <Button
+                        Command="{Binding PingCommand}"
+                        Content="开始"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        ToolTip="回车同样可以触发" />
+                    <Button Command="{Binding StopCommand}" Content="停止" />
+                </WrapPanel>
+
+                <!-- 第二行：这次要扫什么范围 + 模式切换 + 资源库批量入口 -->
+                <WrapPanel Margin="0,6,0,0">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontWeight="SemiBold"
+                        Text="{Binding RangeSummary}" />
+                    <RadioButton
+                        Margin="14,0,0,0"
+                        VerticalAlignment="Center"
+                        Content="表格模式"
+                        GroupName="QuickPingMode"
+                        IsChecked="{Binding TableMode, Mode=TwoWay}" />
+                    <RadioButton
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Content="图形模式"
+                        GroupName="QuickPingMode"
+                        IsChecked="{Binding GraphMode, Mode=TwoWay}"
+                        ToolTip="把最后一段 0..255 铺成网格：亮的是在线，一眼看出这一段里有哪些设备" />
+                    <Button Margin="14,0,8,6" Command="{Binding ClearCommand}" Content="清除结果" />
+                    <Button Command="{Binding ExportCsvCommand}" Content="导出 CSV" />
+                </WrapPanel>
+
+                <WrapPanel Margin="0,6,0,0">
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="或从资源库批量" />
+                    <ComboBox
+                        Width="140"
+                        ItemsSource="{Binding Buildings}"
+                        SelectedItem="{Binding BuildingFilter, Mode=TwoWay}"
+                        ToolTip="按楼栋筛选（留空=全部）" />
+                    <TextBox
+                        Width="110"
+                        Text="{Binding KeywordFilter, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="按 IP / 名称过滤" />
+                    <Button
+                        Command="{Binding PingLibraryCommand}"
+                        Content="Ping 筛选出的设备"
+                        ToolTip="把资源库里当前筛选出的设备 IP 全部 ping 一遍（去重）" />
+                    <TextBlock
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource MutedTextStyle}"
+                        Text="{Binding LibraryTargetCount, StringFormat=当前筛选 {0} 台}" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <!-- 表格模式：IP / 网卡地址 / 主机名 / 返回信息 -->
+            <DockPanel Visibility="{Binding TableMode, Converter={StaticResource BoolToVis}}">
+                <!-- 这两列为什么会有空白，写在表下面，避免被当成 bug -->
+                <TextBlock
+                    DockPanel.Dock="Bottom"
+                    Margin="0,6,0,0"
+                    Style="{StaticResource MutedTextStyle}"
+                    TextWrapping="Wrap"
+                    Text="MAC 仅来自本机 ARP 表，通常只覆盖同网段；跨网段请查 SNMP MAC 表。主机名取决于 DNS / NetBIOS 解析。" />
+            <DataGrid
+                x:Name="QuickPingGrid"
+                MinHeight="160"
+                ItemsSource="{Binding Results}"
+                ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                SelectedItem="{Binding SelectedResult, Mode=TwoWay}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Binding="{Binding Target}" Header="IP 地址" Width="Auto" />
+                    <DataGridTextColumn
+                        Binding="{Binding MacAddress}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="网卡地址"
+                        Width="Auto" />
+                    <DataGridTextColumn
+                        Binding="{Binding HostName}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="主机名"
+                        Width="Auto" />
+                    <DataGridTextColumn Binding="{Binding StatusText}" Header="返回信息" Width="Auto" />
+                    <DataGridTextColumn Binding="{Binding RttText}" Header="延迟" Width="Auto" />
+                    <DataGridTextColumn
+                        Binding="{Binding Detail}"
+                        ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                        Header="说明"
+                        Width="Auto" />
+                </DataGrid.Columns>
+            </DataGrid>
+            </DockPanel>
+
+            <!-- 图形模式：0..255 铺成网格，一眼看哪些地址活着 -->
+            <ScrollViewer
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Visibility="{Binding GraphMode, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <!-- 图例：把"格子颜色/可点"讲清楚（0 和 255 是网络号与广播地址，默认不扫描） -->
+                    <TextBlock
+                        Margin="0,0,0,4"
+                        Style="{StaticResource MutedTextStyle}"
+                        TextWrapping="Wrap"
+                        Text="灰：未测　绿：在线　深灰：超时　红：错误　·　.0 / .255：非主机　·　点击地址查看表格" />
+                <ItemsControl ItemsSource="{Binding GraphItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button
+                                Click="OnGraphCellClick"
+                                Cursor="Hand"
+                                Style="{StaticResource GraphCellButtonStyle}"
+                                ToolTip="{Binding ToolTipText}">
+                            <Border
+                                Width="30"
+                                Height="20"
+                                Margin="1">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <!-- 默认（未测）：浅灰 -->
+                                        <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Style.Triggers>
+                                            <!-- 网络号/广播地址（.0/.255）：画成"非主机"，一眼区分于"未测" -->
+                                            <DataTrigger Binding="{Binding IsNonHost}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource HeaderBackgroundBrush}" />
+                                                <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+                                            </DataTrigger>
+                                            <!-- 在线：绿底白字（一眼就能扫出来） -->
+                                            <DataTrigger Binding="{Binding Status}" Value="Ok">
+                                                <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
+                                                <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}" />
+                                            </DataTrigger>
+                                            <!-- 超时：深灰（和"在线"形成最强对比） -->
+                                            <DataTrigger Binding="{Binding Status}" Value="Timeout">
+                                                <Setter Property="Background" Value="{StaticResource PingTimeoutBrush}" />
+                                                <Setter Property="BorderBrush" Value="{StaticResource PingTimeoutBrush}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+                                                <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    Text="{Binding LastOctet}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}" Value="Ok">
+                                                    <Setter Property="Foreground" Value="White" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="Timeout">
+                                                    <Setter Property="Foreground" Value="White" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                    <Setter Property="Foreground" Value="White" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Margin="0,6,0,0">
+            <WrapPanel>
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="起始:" />
+                <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" Text="{Binding StartTimeText}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="终止:" />
+                <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" Text="{Binding EndTimeText}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="用时:" />
+                <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" Text="{Binding ElapsedText}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="已发现:" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource SuccessBrush}"
+                    Text="{Binding FoundCount}" />
+                <TextBlock
+                    Margin="14,0,0,0"
+                    VerticalAlignment="Center"
+                    FontWeight="SemiBold"
+                    Text="{Binding ProgressText}" />
+            </WrapPanel>
+            <TextBlock FontWeight="SemiBold" Text="{Binding Summary}" />
+            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding StatusHint}" TextWrapping="Wrap" />
+        </StackPanel>
+    </Grid>
+</UserControl>

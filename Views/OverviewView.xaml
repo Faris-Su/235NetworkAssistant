@@ -1,0 +1,323 @@
+<UserControl
+    x:Class="RuijieNetworkAssistant.Views.OverviewView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="clr-namespace:RuijieNetworkAssistant.Helpers"
+    mc:Ignorable="d"
+    d:DesignHeight="600"
+    d:DesignWidth="1000">
+
+    <!-- 窗口变小时整页可竖向滚动：内容超过可视高度出现滚动条，够高时仍然撑满（不出现空白）。 -->
+    <Grid x:Name="OverviewPageHost">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid MinHeight="{Binding ActualHeight, ElementName=OverviewPageHost}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource PageTitleStyle}" Text="概览" />
+                </DockPanel>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.15*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="1*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 当前设备 -->
+                    <Border
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="3"
+                        Margin="0,0,0,8"
+                        Style="{StaticResource PanelBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前设备" ToolTip="{Binding SessionId}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="76" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="76" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="30" />
+                                    <RowDefinition Height="30" />
+                                    <RowDefinition Height="30" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="设备名称" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource ValueTextStyle}" Text="{Binding DeviceName}" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabelStyle}" Text="管理 IP" ToolTip="{Binding DeviceInfoNote}" />
+                                <!--
+                                    [获取] 按钮就放在原来显示「—（未获取）」的那一格后面（用户 2026-09-25 要求）：
+                                    有线连接（Telnet / SSH / 隧道）时点一下就从设备读一次真实管理 IP，
+                                    不用专门跳到【设备】页去点「三层接口」。
+                                    配置线连上后同样能用（那一格本来只显示"未获取"，现在旁边就有按钮）。
+                                    只读命令 show ip interface brief，不改配置；没连上或 CLI 没就绪时按钮禁用（提示会说明原因）。
+                                -->
+                                <DockPanel Grid.Row="0" Grid.Column="3">
+                                    <Button
+                                        DockPanel.Dock="Right"
+                                        Margin="6,0,0,0"
+                                        Padding="7,0"
+                                        MinWidth="0"
+                                        MinHeight="20"
+                                        FontSize="14"
+                                        Content="{Binding ManagementIpButtonText}"
+                                        Command="{Binding ReadManagementIpCommand}"
+                                        ToolTip="读一次设备的三层接口（show ip interface brief），把设备真实的管理 IP 填到这一格。只读，不会改配置。" />
+                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource ValueTextStyle}"
+                                               Text="{Binding ManagementAddress}" ToolTip="{Binding ManagementAddress}" />
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="连接方式" />
+                                <TextBlock
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Style="{StaticResource ValueTextStyle}"
+                                    Text="{Binding ConnectionKind}"
+                                    ToolTip="{Binding ConnectionKind}" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldLabelStyle}" Text="连接状态" />
+                                <TextBlock Grid.Row="1" Grid.Column="3" Style="{StaticResource ValueTextStyle}" Text="{Binding ConnectionState}" />
+
+                                <!-- 连接端口单独一行：串口是 COM5，Telnet/SSH 是 23/22 —— 既不塞进"管理 IP"，也不混进"连接方式" -->
+                                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource FieldLabelStyle}" Text="连接端口" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource ValueTextStyle}" Text="{Binding ConnectionPort}" />
+
+                            </Grid>
+                            <!-- 管理 IP 的来源/结果说明：点[获取]之后这里会说清"读到什么/为什么没读到" -->
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                TextWrapping="Wrap"
+                                Text="{Binding ManagementIpNotice}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 网络资源与网络探测；连接 / CLI / 备份等页面入口统一从左侧导航进入。 -->
+                    <Border
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Style="{StaticResource PanelBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="网络资源库" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding ResourceSummary}" />
+
+                            <!-- 网络工具：Ping / Tracert（只读探测，不依赖连接） -->
+                            <TextBlock Margin="0,12,0,4" Style="{StaticResource SectionTitleStyle}" Text="网络工具（Ping / Tracert）" />
+                            <WrapPanel>
+                                <TextBlock VerticalAlignment="Center" Style="{StaticResource FieldLabelStyle}" Text="目标" />
+                                <TextBox
+                                    Width="150"
+                                    Text="{Binding ToolHost, UpdateSourceTrigger=PropertyChanged}"
+                                    ToolTip="交换机管理 IP、交换机名或任意域名" />
+                                <Button
+                                    Command="{Binding PingCommand}"
+                                    Content="Ping"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    ToolTip="连续 4 次 ICMP，给出延迟与丢包统计" />
+                                <Button
+                                    Command="{Binding TracertCommand}"
+                                    Content="Tracert"
+                                    ToolTip="逐跳跟踪到目标的路由（最多 15 跳）" />
+                                <Button Command="{Binding StopToolCommand}" Content="停止" />
+                            </WrapPanel>
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{Binding ToolStatus}"
+                                TextWrapping="Wrap"
+                                Visibility="{Binding HasToolStatus, Converter={StaticResource BoolToVis}}" />
+                            <TextBox
+                                Height="118"
+                                Margin="0,4,0,0"
+                                FontFamily="Consolas, Microsoft YaHei UI"
+                                FontSize="14"
+                                IsReadOnly="True"
+                                Text="{Binding ToolOutput, Mode=OneWay}"
+                                TextWrapping="NoWrap"
+                                VerticalContentAlignment="Top"
+                                VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Auto" />
+
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 本机网络（只读）：现场排障第一眼 —— 电脑自己现在是什么地址、网关在哪、网线插没插 -->
+                    <Border
+                        Grid.Row="2"
+                        Grid.Column="0"
+                        Margin="0,8,0,0"
+                        Style="{StaticResource PanelBorderStyle}">
+                        <StackPanel>
+                            <DockPanel>
+                                <Button
+                                    DockPanel.Dock="Right"
+                                    Command="{Binding RefreshLocalNetworkCommand}"
+                                    Content="刷新"
+                                    ToolTip="重新读取本机网卡：插拔网线、切 WiFi / 换网段之后点一下" />
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="本机网络（只读）" />
+                            </DockPanel>
+                            <CheckBox
+                                Margin="0,4,0,0"
+                                Content="显示虚拟网卡（VMware / Hyper-V / VPN…）"
+                                IsChecked="{Binding ShowVirtualAdapters, Mode=TwoWay}"
+                                ToolTip="默认只显示物理网卡（含未插线的）；虚拟网卡平时会把真正该看的网卡淹掉。" />
+                            <DataGrid
+                                x:Name="LocalNetworkGrid"
+                                MaxHeight="150"
+                                Margin="0,4,0,0"
+                                ItemsSource="{Binding LocalAdapters}"
+                                ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn
+                                        Binding="{Binding DisplayName}"
+                                        Header="网卡"
+                                        Width="165">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <!-- 名字会被截断，鼠标停上去看完整描述（例如 Realtek Gaming 2.5GbE…） -->
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource TrimmedCellTextStyle}">
+                                                <Setter Property="ToolTip" Value="{Binding Description}" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn
+                                        Binding="{Binding AddressText}"
+                                        Header="本机地址"
+                                        Width="*"
+                                        MinWidth="130" />
+                                    <DataGridTextColumn Binding="{Binding Gateway}" Header="网关" Width="150" MinWidth="130" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{Binding LocalNetworkVirtualNote}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{Binding LocalNetworkGateway}" />
+                            <TextBlock
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{Binding LocalNetworkDns}"
+                                Visibility="{Binding HasLocalNetworkDns, Converter={StaticResource BoolToVis}}" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{Binding LocalNetworkHint}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                FontSize="14"
+                                Foreground="{StaticResource TextMutedBrush}"
+                                Text="{Binding LocalNetworkAt}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- SNMP（只读）：设备信息卡片，进入页面查一次，其余由[刷新 SNMP]触发 -->
+                    <Border
+                        Grid.Row="3"
+                        Grid.Column="0"
+                        Margin="0,8,0,0"
+                        Visibility="{Binding IsSnmpEnabled, Converter={StaticResource BoolToVis}}"
+                        Style="{StaticResource PanelBorderStyle}">
+                        <StackPanel>
+                            <DockPanel>
+                                <Button
+                                    DockPanel.Dock="Right"
+                                    Padding="8,2"
+                                    Command="{Binding RefreshSnmpCommand}"
+                                    Content="刷新 SNMP"
+                                    ToolTip="用 SNMP v2c 读取设备信息（只读；不修改任何配置）" />
+                                <Button
+                                    DockPanel.Dock="Right"
+                                    Margin="0,0,8,0"
+                                    Padding="8,2"
+                                    Command="{Binding OpenSnmpCommand}"
+                                    Content="打开 SNMP"
+                                    ToolTip="SNMP 是独立模块：不连 Console/Telnet 也能按 IP + Community 查询" />
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="SNMP 设备信息（只读）" />
+                            </DockPanel>
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{Binding SnmpTargetText}"
+                                TextTrimming="CharacterEllipsis" />
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Style="{StaticResource MutedTextStyle}"
+                                Text="{Binding SnmpStatus}"
+                                TextWrapping="Wrap" />
+
+                            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding SnmpLines}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <WrapPanel>
+                                            <TextBlock
+                                                Width="84"
+                                                Style="{StaticResource FieldLabelStyle}"
+                                                Text="{Binding Name}" />
+                                            <TextBlock
+                                                Margin="0,0,8,0"
+                                                Text="{Binding Value}"
+                                                TextTrimming="CharacterEllipsis"
+                                                ToolTip="{Binding Value}" />
+                                        </WrapPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 最近操作记录 -->
+                    <Border
+                        Grid.Row="1"
+                        Grid.RowSpan="3"
+                        Grid.Column="2"
+                        Style="{StaticResource PanelBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <DockPanel Grid.Row="0">
+                                <Button
+                                    DockPanel.Dock="Right"
+                                    Command="{Binding OpenLedgerFolderCommand}"
+                                    Content="打开操作台账"
+                                    ToolTip="按天一个 CSV（operations-yyyyMMdd.csv），记时间/设备/操作/结果/内容 —— 交接班与回单用。界面这个列表只保留最近 50 条、关程序就没了，台账是落盘的。写入前会做密码脱敏。" />
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="最近操作记录" />
+                            </DockPanel>
+                            <DataGrid
+                                Grid.Row="1"
+                                ItemsSource="{Binding RecentOperations}"
+                                MinHeight="220">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Binding="{Binding TimeText}" Header="时间" Width="72" />
+                                    <DataGridTextColumn Binding="{Binding Title}" Header="操作" Width="96" />
+                                    <DataGridTextColumn Binding="{Binding ResultText}" Header="结果" Width="50" />
+                                    <DataGridTextColumn Binding="{Binding Detail}" Header="说明" Width="*" MinWidth="140" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- 产品名已固定在主窗口标题栏；概览页不再叠加重复水印。 -->
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

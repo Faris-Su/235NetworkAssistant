@@ -1,0 +1,163 @@
+<Window
+    x:Class="RuijieNetworkAssistant.Views.CommandPreviewWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="命令预览 / Command Preview"
+    Width="880"
+    Height="560"
+    MinWidth="520"
+    MinHeight="380"
+    Background="{StaticResource AppBackgroundBrush}"
+    FontFamily="Microsoft YaHei UI, Segoe UI"
+    FontSize="14"
+    TextOptions.TextFormattingMode="Display"
+    WindowStartupLocation="CenterOwner">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <TextBlock Style="{StaticResource PageTitleStyle}" Text="{Binding Title}" />
+            <Border Style="{StaticResource ChipStyle}" Margin="10,2,0,0">
+                <TextBlock Text="Command Preview" />
+            </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,8,0,8">
+            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding Description}" />
+            <TextBlock
+                Margin="0,4,0,0"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource WarningBrush}"
+                Text="{Binding RiskText}"
+                TextWrapping="Wrap" />
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource MutedTextStyle}"
+                Text="{Binding ImpactScope}"
+                TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border
+            Grid.Row="2"
+            Height="200"
+            MinHeight="110"
+            Background="{StaticResource TerminalBackgroundBrush}"
+            Padding="8">
+            <TextBox
+                Background="{StaticResource TerminalBackgroundBrush}"
+                BorderThickness="0"
+                FontFamily="Consolas, Courier New"
+                FontSize="14"
+                Foreground="{StaticResource TerminalForegroundBrush}"
+                IsReadOnly="True"
+                Padding="4"
+                Text="{Binding CommandsText, Mode=OneWay}"
+                TextWrapping="NoWrap"
+                VerticalContentAlignment="Top"
+                VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Auto" />
+        </Border>
+
+        <!-- 权限提示：普通模式下需要管理权限时，在这里就地提升，不弹登录窗口 -->
+        <Border
+            Grid.Row="3"
+            Margin="0,10,0,0"
+            Background="{StaticResource PanelAltBrush}"
+            BorderBrush="{StaticResource WarningBrush}"
+            BorderThickness="1"
+            Padding="8,6"
+            Visibility="{Binding IsPrivilegeBlocked, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource WarningBrush}"
+                    Text="需要管理权限" />
+                <TextBlock
+                    Margin="0,4,0,0"
+                    Style="{StaticResource MutedTextStyle}"
+                    Text="{Binding PrivilegeHint}"
+                    TextWrapping="Wrap" />
+                <WrapPanel Margin="0,6,0,0">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Text="Enable 密码" />
+                    <PasswordBox
+                        x:Name="EnablePasswordBox"
+                        Width="150"
+                        Padding="4,2"
+                        PasswordChanged="OnEnablePasswordChanged" />
+                    <Button
+                        Command="{Binding ElevateCommand}"
+                        Content="提升权限"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        ToolTip="执行 enable 并输入密码；成功后自动继续执行本次操作" />
+                    <Button Command="{Binding CloseCommand}" Content="继续普通模式（取消本次操作）" />
+                </WrapPanel>
+                <TextBlock
+                    Margin="0,4,0,0"
+                    FontSize="13"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="{Binding PrivilegeStatus}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <StackPanel
+            Grid.Row="4"
+            Margin="0,10,0,0"
+            Orientation="Horizontal">
+            <Button Command="{Binding CopyCommand}" Content="复制" />
+            <Button Command="{Binding CloseCommand}" Content="取消" />
+            <Button
+                Command="{Binding ExecuteCommand}"
+                Content="执行"
+                Style="{StaticResource PrimaryButtonStyle}" />
+            <TextBlock
+                Margin="8,0,0,0"
+                VerticalAlignment="Center"
+                Style="{StaticResource MutedTextStyle}"
+                Text="{Binding ExecuteHint}" />
+        </StackPanel>
+
+        <TextBlock
+            Grid.Row="5"
+            Margin="0,8,0,4"
+            Style="{StaticResource SectionTitleStyle}"
+            Text="执行结果（原始 CLI 输出）"
+            Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}" />
+
+        <Border
+            Grid.Row="6"
+            MinHeight="140"
+            Background="{StaticResource PanelBrush}"
+            BorderBrush="{StaticResource BorderBrushSoft}"
+            BorderThickness="1"
+            Padding="6"
+            Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
+            <TextBox
+                BorderThickness="0"
+                FontFamily="Consolas, Courier New"
+                FontSize="13"
+                IsReadOnly="True"
+                Padding="4"
+                Text="{Binding ResultText, Mode=OneWay}"
+                TextWrapping="NoWrap"
+                VerticalContentAlignment="Top"
+                VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Auto" />
+        </Border>
+    </Grid>
+</Window>

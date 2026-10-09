@@ -1,0 +1,63 @@
+<Application
+    x:Class="RuijieNetworkAssistant.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:RuijieNetworkAssistant.ViewModels"
+    xmlns:views="clr-namespace:RuijieNetworkAssistant.Views"
+    ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- ViewModel → View 映射（按需创建页面） -->
+            <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
+                <views:OverviewView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
+                <views:ConnectionView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:CliViewModel}">
+                <views:CliView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ResourceLibraryViewModel}">
+                <views:ResourceLibraryView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+                <views:SettingsView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:PortsViewModel}">
+                <views:PortsView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:VlanViewModel}">
+                <views:VlanView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:TrunkViewModel}">
+                <views:TrunkView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:LldpViewModel}">
+                <views:LldpView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:MacIpViewModel}">
+                <views:MacIpView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SnmpViewModel}">
+                <views:SnmpView />
+            </DataTemplate>
+            <!--
+                巡检 / 全网定位：源码保留在项目里，但按用户要求**不打包**，
+                所以模板也随之移除（恢复方法见 RuijieNetworkAssistant.csproj 里的注释）。
+            -->
+            <DataTemplate DataType="{x:Type vm:QuickPingViewModel}">
+                <views:QuickPingView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:DeviceInfoViewModel}">
+                <views:DeviceInfoView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:BackupViewModel}">
+                <views:BackupView />
+            </DataTemplate>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

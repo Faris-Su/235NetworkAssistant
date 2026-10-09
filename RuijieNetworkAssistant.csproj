@@ -1,0 +1,92 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!--
+      目标框架选择 .NET 8（LTS）而不是 .NET 10：
+      发布测试发现本机（以及同批 Windows 10 现场电脑）上 .NET 10 的 apphost 无法启动
+      （退出码 0xC0000005，SDK 自带 csc.exe 同样崩溃），而 .NET 8 的自包含单文件 EXE 可以正常启动。
+      详见 docs/architecture.md「构建与发布环境」。
+    -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!--
+      品牌重命名：用户可见名称、程序集名与 EXE 名改为 235*；内部 C# 命名空间保留历史名称，
+      避免大规模重命名带来的回归风险（说明见 docs/architecture.md「品牌与命名」）。
+    -->
+    <AssemblyName>235NetworkAssistant</AssemblyName>
+    <RootNamespace>RuijieNetworkAssistant</RootNamespace>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <Product>235 Network Assistant</Product>
+    <AssemblyTitle>235修网助手</AssemblyTitle>
+    <Description>面向校园网络运维人员的轻量化交换机配置与运维辅助工具</Description>
+    <Company>235 Network Assistant Team</Company>
+    <Authors>235 Network Assistant Team</Authors>
+    <Copyright>© 2026 235 Network Assistant Team</Copyright>
+    <NeutralLanguage>zh-Hans</NeutralLanguage>
+    <Version>0.2.1</Version>
+    <AssemblyVersion>0.2.1.0</AssemblyVersion>
+    <FileVersion>0.2.1.0</FileVersion>
+    <InformationalVersion>0.2.1</InformationalVersion>
+    <!-- 体积/启动优化：只保留英文附属资源，减少发布体积 -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      SSH 支持：SSH.NET（MIT）。自己实现 SSH 协议不现实（密钥交换/加密/认证）；
+      实测其默认算法表里带 group1-sha1 / ssh-rsa / aes-cbc / hmac-sha1，
+      老款锐捷固件也能协商成功（见 work/HANDOFF.md「SSH」一节）。
+    -->
+    <PackageReference Include="SSH.NET" Version="2025.1.0" />
+    <!-- Console/Serial 支持：.NET 内置 WPF 框架不包含 System.IO.Ports，必须显式引用 -->
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="设置页机魂彩蛋动画资源">
+    <Resource Include="Assets\MachineSoulOverloadBegin.gif" />
+    <Resource Include="Assets\MachineSoulOverloadLoop.gif" />
+  </ItemGroup>
+
+  <!--
+    ============================================================================
+    以下功能【保留在项目里，但不编进发布件】
+
+    背景：产品范围决定「巡检」与「全网定位」这两个功能暂不编入发布件，
+    要求"不要打包进去、在项目里留着"。所以这里把它们的源文件从编译项里排除：
+      · 发布出来的 EXE 里不含这些代码（体积与攻击面都小一点）；
+      · 源码仍在仓库里、仍然能被自检工程编译与测试（work/selfcheck 是独立工程，不受这里影响）；
+      · 想恢复某个功能：把对应文件从下面的 Remove 列表里删掉，
+        再把 `ViewModels/MainViewModel.cs` 的 BuildNavigation 里注释掉的那两行取消注释、
+        并在 `App.xaml` 里加回对应的 DataTemplate（模板也一起被排除了）。
+
+    排除清单（一个功能一组）：
+      巡检：Models/InspectionRow.cs、Services/Snmp/SnmpInspectionService.cs、
+            ViewModels/InspectionViewModel.cs、Views/InspectionView.xaml(.cs)
+      定位：Models/MacLocation.cs、Models/LocateHit.cs、Services/Snmp/SnmpMacLocator.cs、
+            ViewModels/LocateViewModel.cs、Views/LocateView.xaml(.cs)
+    ============================================================================
+  -->
+  <ItemGroup Label="未打包的功能：巡检 / 全网定位">
+    <Compile Remove="Models\InspectionRow.cs" />
+    <Compile Remove="Services\Snmp\SnmpInspectionService.cs" />
+    <Compile Remove="ViewModels\InspectionViewModel.cs" />
+
+    <Compile Remove="Models\MacLocation.cs" />
+    <Compile Remove="Models\LocateHit.cs" />
+    <Compile Remove="Services\Snmp\SnmpMacLocator.cs" />
+    <Compile Remove="ViewModels\LocateViewModel.cs" />
+
+    <!-- XAML 用 Page Remove（Views 下是隐式 Page 项）；code-behind 一起排除 -->
+    <Page Remove="Views\InspectionView.xaml" />
+    <Compile Remove="Views\InspectionView.xaml.cs" />
+    <Page Remove="Views\LocateView.xaml" />
+    <Compile Remove="Views\LocateView.xaml.cs" />
+  </ItemGroup>
+
+</Project>

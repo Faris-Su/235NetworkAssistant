@@ -1,0 +1,264 @@
+<UserControl
+    x:Class="RuijieNetworkAssistant.Views.PortsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:RuijieNetworkAssistant.Views.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="640"
+    d:DesignWidth="1000">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题 / 刷新（按钮可换行，避免小屏挤出屏幕） -->
+        <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Style="{StaticResource PageTitleStyle}" Text="端口" />
+            <Button
+                Margin="8,0,8,6"
+                Command="{Binding RefreshCommand}"
+                Content="刷新端口"
+                Style="{StaticResource PrimaryButtonStyle}"
+                ToolTip="执行 show interface status（不自动轮询）" />
+            <Button Command="{Binding RefreshLldpCommand}" Content="获取 LLDP 邻居" />
+            <TextBlock
+                Margin="8,0,0,0"
+                VerticalAlignment="Center"
+                FontWeight="SemiBold"
+                Text="{Binding ParseSummary}" />
+        </WrapPanel>
+
+        <!-- 端口表：小屏自动隐藏次要列（Duplex/Speed/Type/LLDP），选中行看详情。
+             注意：全局 DataGrid 样式是 IsReadOnly=True，DataGridCheckBoxColumn 在这种表格里
+             点不动（要双击进编辑态），所以这里用模板列放真正的 CheckBox，一次点击即可勾选。 -->
+        <Grid Grid.Row="1">
+          <DataGrid
+              x:Name="PortsGrid"
+              MinHeight="180"
+              ItemsSource="{Binding Ports}"
+              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+              SelectionMode="Extended"
+              SelectedItem="{Binding SelectedPort, Mode=TwoWay}">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Width="40">
+                    <DataGridTemplateColumn.Header>
+                        <CheckBox
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Command="{Binding DataContext.ToggleAllPortsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                            IsChecked="{Binding DataContext.IsAllPortsSelected, Mode=OneWay, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                            IsThreeState="True"
+                            ToolTip="全选 / 取消全选（当前列出的所有端口）" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                ToolTip="勾选这个端口参与批量配置（一次点击即可）" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Binding="{Binding Port}" Header="Port" Width="Auto" />
+                <DataGridTextColumn Binding="{Binding StatusText}" Header="Status" Width="Auto" />
+                <DataGridTextColumn Binding="{Binding Vlan}" Header="VLAN" Width="Auto" />
+                <!-- 数字 VLAN 不足以区分 Access 和 Trunk；模式由 Trunk 清单核实。 -->
+                <DataGridTextColumn
+                    Binding="{Binding Mode}"
+                    Header="模式"
+                    ToolTipService.ToolTip="Access / Trunk 由 show int trunk 清单核实；未核实时显示待确认"
+                    Width="Auto" />
+                <DataGridTextColumn
+                    Binding="{Binding Duplex}"
+                    controls:ResponsiveColumns.IsSecondary="True"
+                    Header="Duplex"
+                    Width="Auto" />
+                <DataGridTextColumn
+                    Binding="{Binding Speed}"
+                    controls:ResponsiveColumns.IsSecondary="True"
+                    Header="Speed"
+                    Width="Auto" />
+                <DataGridTextColumn
+                    Binding="{Binding Type}"
+                    controls:ResponsiveColumns.IsSecondary="True"
+                    ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                    Header="Type"
+                    Width="Auto" />
+                <DataGridTextColumn
+                    Binding="{Binding LldpNeighbor}"
+                    controls:ResponsiveColumns.IsSecondary="True"
+                    ElementStyle="{StaticResource TrimmedCellTextStyle}"
+                    Header="LLDP 邻居"
+                    Width="Auto" />
+            </DataGrid.Columns>
+          </DataGrid>
+          <StackPanel
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              IsHitTestVisible="False">
+              <StackPanel.Style>
+                  <Style TargetType="StackPanel">
+                      <Setter Property="Visibility" Value="Collapsed" />
+                      <Style.Triggers>
+                          <DataTrigger Binding="{Binding HasItems, ElementName=PortsGrid}" Value="False">
+                              <Setter Property="Visibility" Value="Visible" />
+                          </DataTrigger>
+                      </Style.Triggers>
+                  </Style>
+              </StackPanel.Style>
+              <TextBlock
+                  HorizontalAlignment="Center"
+                  FontSize="16"
+                  FontWeight="SemiBold"
+                  Foreground="{StaticResource TextPrimaryBrush}"
+                  Text="端口列表尚未加载" />
+              <TextBlock
+                  Margin="0,4,0,0"
+                  HorizontalAlignment="Center"
+                  Style="{StaticResource MutedTextStyle}"
+                  Text="连接交换机后，点击“刷新端口”查看接口状态。" />
+          </StackPanel>
+        </Grid>
+
+        <!-- 选中项详情：小屏不用横向滚动就能看到完整字段 -->
+        <Border Grid.Row="2" Margin="0,4,0,0" Style="{StaticResource PanelBorderStyle}">
+            <StackPanel>
+              <DockPanel LastChildFill="True">
+                <TextBlock Margin="0,0,8,0" Style="{StaticResource FieldLabelStyle}" Text="批量勾选" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Text="{Binding SelectedPortsSummary}"
+                    TextWrapping="Wrap" />
+              </DockPanel>
+              <WrapPanel Margin="0,4,0,0">
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="当前行" />
+                <TextBlock
+                    MinWidth="120"
+                    FontWeight="SemiBold"
+                    Text="{Binding SelectedPortDetail.Port, FallbackValue=（未选择）, TargetNullValue=（未选择）}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="状态" />
+                <TextBlock MinWidth="60" Text="{Binding SelectedPortDetail.StatusText, FallbackValue=—, TargetNullValue=—}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="VLAN" />
+                <TextBlock MinWidth="60" Text="{Binding SelectedPortDetail.Vlan, FallbackValue=—, TargetNullValue=—}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="模式" />
+                <TextBlock MinWidth="55" Text="{Binding SelectedPortDetail.Mode, FallbackValue=—, TargetNullValue=—}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="速率" />
+                <TextBlock MinWidth="60" Text="{Binding SelectedPortDetail.Speed, FallbackValue=—, TargetNullValue=—}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="双工" />
+                <TextBlock MinWidth="60" Text="{Binding SelectedPortDetail.Duplex, FallbackValue=—, TargetNullValue=—}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="类型" />
+                <TextBlock
+                    MinWidth="90"
+                    Text="{Binding SelectedPortDetail.Type, FallbackValue=—, TargetNullValue=—}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="LLDP" />
+                <TextBlock
+                    MinWidth="110"
+                    Text="{Binding SelectedPortDetail.LldpNeighbor, FallbackValue=—, TargetNullValue=—}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="规范名" />
+                <TextBlock MinWidth="60" Text="{Binding SelectedPortDetail.NormalizedPort, FallbackValue=—, TargetNullValue=—}" />
+              </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 批量配置（生成命令预览后才会执行） -->
+        <Expander
+            Grid.Row="3"
+            Margin="0,6,0,0"
+            Header="端口批量配置"
+            IsExpanded="False"
+            ToolTip="勾选或输入端口后选择操作；所有更改仍先生成命令预览，再由你确认执行。">
+            <Border Margin="0,6,0,0" Style="{StaticResource PanelBorderStyle}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="生成命令预览后才会执行" />
+                <WrapPanel>
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="端口输入" />
+                    <TextBox
+                        Width="220"
+                        Text="{Binding ManualPortsText, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="例如 g0/1-3,g0/5；勾选端口会自动合并。单个范围最多 128 个端口。" />
+                    <Button Command="{Binding SelectAllCommand}" Content="全选" />
+                    <Button Command="{Binding ClearSelectionCommand}" Content="清空选择" />
+                    <TextBlock
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource MutedTextStyle}"
+                        Text="{Binding SelectionSummary}"
+                        TextTrimming="CharacterEllipsis" />
+                </WrapPanel>
+
+                <WrapPanel Margin="0,6,0,0">
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="操作" />
+                    <ComboBox
+                        Width="170"
+                        ItemsSource="{Binding PortActionOptions}"
+                        SelectedItem="{Binding SelectedAction, Mode=TwoWay}" />
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="VLAN" />
+                    <TextBox Width="64" Text="{Binding VlanIdText, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource InlineLabelStyle}" Text="速率" />
+                    <ComboBox
+                        Width="76"
+                        ItemsSource="{Binding SpeedOptions}"
+                        SelectedItem="{Binding Speed, Mode=TwoWay}" />
+                    <TextBlock Style="{StaticResource InlineLabelStyle}" Text="双工" />
+                    <ComboBox
+                        Width="76"
+                        ItemsSource="{Binding DuplexOptions}"
+                        SelectedItem="{Binding Duplex, Mode=TwoWay}" />
+                    <TextBlock Style="{StaticResource InlineLabelStyle}" Text="介质" />
+                    <ComboBox
+                        Width="86"
+                        ItemsSource="{Binding MediumOptions}"
+                        SelectedItem="{Binding Medium, Mode=TwoWay}" />
+                    <Button
+                        Command="{Binding PreviewActionCommand}"
+                        Content="生成命令并预览"
+                        Style="{StaticResource PrimaryButtonStyle}" />
+                </WrapPanel>
+                <TextBlock Margin="0,2,0,0" Style="{StaticResource MutedTextStyle}" Text="{Binding LldpHint}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+        </Expander>
+
+        <!-- 状态 -->
+        <StackPanel Grid.Row="4" Margin="0,6,0,0">
+            <TextBlock Style="{StaticResource MutedTextStyle}" Text="{Binding StatusHint}" />
+            <TextBlock
+                Foreground="{StaticResource NoteBrush}"
+                Text="{Binding ParserNote}"
+                TextWrapping="Wrap"
+                Visibility="{Binding HasParserNote, Converter={StaticResource BoolToVis}}" />
+        </StackPanel>
+
+        <!-- 原始输出 -->
+        <Expander Grid.Row="5" Margin="0,6,0,0" Header="原始输出（show interface status / show lldp neighbors）">
+            <StackPanel>
+                <WrapPanel Margin="0,4,0,4">
+                    <Button Command="{Binding CopyRawCommand}" Content="复制原始输出" />
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource MutedTextStyle}" Text="{Binding RawInfo}" />
+                </WrapPanel>
+                <TextBox
+                    Height="140"
+                    FontFamily="Consolas, Courier New"
+                    FontSize="13"
+                    IsReadOnly="True"
+                    Text="{Binding RawOutput, Mode=OneWay}"
+                    TextWrapping="NoWrap"
+                    VerticalContentAlignment="Top"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Auto" />
+            </StackPanel>
+        </Expander>
+    </Grid>
+</UserControl>

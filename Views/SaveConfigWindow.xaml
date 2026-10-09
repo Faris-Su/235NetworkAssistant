@@ -1,0 +1,239 @@
+<Window
+    x:Class="RuijieNetworkAssistant.Views.SaveConfigWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="保存配置到设备（write）"
+    Width="640"
+    Height="620"
+    MinWidth="520"
+    MinHeight="420"
+    Background="{StaticResource AppBackgroundBrush}"
+    FontFamily="Microsoft YaHei UI, Segoe UI"
+    FontSize="14"
+    TextOptions.TextFormattingMode="Display"
+    WindowStartupLocation="CenterOwner">
+
+    <Grid Margin="12" Background="{StaticResource AppBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题 -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <TextBlock Style="{StaticResource PageTitleStyle}" Text="保存配置到设备" />
+            <Border Style="{StaticResource ChipStyle}" Margin="10,2,0,0">
+                <TextBlock Text="写入设备 · write" />
+            </Border>
+        </StackPanel>
+
+        <!-- 目标设备：按之前先看清是哪台设备 -->
+        <Border Grid.Row="1" Margin="0,8,0,0" Style="{StaticResource PanelBorderStyle}">
+            <WrapPanel>
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="设备" />
+                <TextBlock Margin="0,0,16,0" Style="{StaticResource ValueTextStyle}" Text="{Binding DeviceNameText}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="地址" />
+                <TextBlock Margin="0,0,16,0" Style="{StaticResource ValueTextStyle}" Text="{Binding AddressText}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="连接方式" />
+                <TextBlock Margin="0,0,16,0" Style="{StaticResource ValueTextStyle}" Text="{Binding KindText}" />
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="当前权限" />
+                <TextBlock Style="{StaticResource ValueTextStyle}" Text="{Binding PrivilegeText}" />
+            </WrapPanel>
+        </Border>
+
+        <!-- 要发送的命令 -->
+        <Border
+            Grid.Row="2"
+            Margin="0,8,0,0"
+            Background="{StaticResource TerminalBackgroundBrush}"
+            Padding="8,6">
+            <StackPanel>
+                <TextBlock
+                    FontSize="13"
+                    Foreground="{StaticResource TerminalForegroundBrush}"
+                    Text="将要发送的命令" />
+                <TextBlock
+                    Margin="0,4,0,0"
+                    FontFamily="Consolas, Courier New"
+                    FontSize="17"
+                    FontWeight="Bold"
+                    Foreground="{StaticResource TerminalForegroundBrush}"
+                    Text="{Binding CommandText}" />
+            </StackPanel>
+        </Border>
+
+        <!-- 警示 -->
+        <Border
+            Grid.Row="3"
+            Margin="0,8,0,0"
+            Background="{StaticResource PanelAltBrush}"
+            BorderBrush="{StaticResource DangerBrush}"
+            BorderThickness="1"
+            Padding="8,6">
+            <StackPanel>
+                <TextBlock
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource DangerBrush}"
+                    Text="这条命令会写设备，不是只读操作" />
+                <TextBlock
+                    Margin="0,4,0,0"
+                    Style="{StaticResource MutedTextStyle}"
+                    Text="{Binding WarningText}" />
+                <TextBlock
+                    Margin="0,4,0,0"
+                    Style="{StaticResource MutedTextStyle}"
+                    Text="{Binding CommandHint}" />
+            </StackPanel>
+        </Border>
+
+        <!-- 权限：普通模式下就地提权（提权成功不会自动写入） -->
+        <Border
+            Grid.Row="4"
+            Margin="0,8,0,0"
+            Background="{StaticResource PanelAltBrush}"
+            BorderBrush="{StaticResource WarningBrush}"
+            BorderThickness="1"
+            Padding="8,6"
+            Visibility="{Binding IsPrivilegeBlocked, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource WarningBrush}"
+                    Text="需要管理权限" />
+                <TextBlock
+                    Margin="0,4,0,0"
+                    Style="{StaticResource MutedTextStyle}"
+                    Text="{Binding PrivilegeHint}" />
+                <WrapPanel Margin="0,6,0,0">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Text="Enable 密码" />
+                    <PasswordBox
+                        x:Name="EnablePasswordBox"
+                        Width="150"
+                        Padding="4,2"
+                        PasswordChanged="OnEnablePasswordChanged" />
+                    <Button
+                        Command="{Binding ElevateCommand}"
+                        Content="提升权限"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        ToolTip="执行 enable 并输入密码；成功后请重新按住确认，软件不会自动写入" />
+                </WrapPanel>
+                <TextBlock
+                    Margin="0,4,0,0"
+                    FontSize="13"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="{Binding PrivilegeStatus}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- 按住确认：防误触的核心 · 鼠标按住 1.2 秒才写入 -->
+        <StackPanel Grid.Row="5" Margin="0,10,0,0">
+            <Grid Height="44" Width="320" HorizontalAlignment="Left">
+                <ProgressBar
+                    BorderBrush="{StaticResource BorderBrushSoft}"
+                    BorderThickness="1"
+                    Foreground="{StaticResource AccentBrush}"
+                    Background="{StaticResource PanelBrush}"
+                    Maximum="1"
+                    Value="{Binding HoldProgress, Mode=OneWay}" />
+                <Border
+                    x:Name="HoldSurface"
+                    Background="Transparent"
+                    Cursor="Hand"
+                    Focusable="False"
+                    LostMouseCapture="OnHoldLostCapture"
+                    PreviewMouseLeftButtonDown="OnHoldStarted"
+                    PreviewMouseLeftButtonUp="OnHoldEnded">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Text="{Binding HoldButtonText}" />
+                </Border>
+            </Grid>
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource MutedTextStyle}"
+                Text="{Binding HoldHint}" />
+            <TextBlock
+                Margin="0,6,0,0"
+                Style="{StaticResource MutedTextStyle}"
+                Text="{Binding StatusText}" />
+            <TextBlock
+                Margin="0,2,0,0"
+                FontSize="13"
+                Foreground="{StaticResource TextMutedBrush}"
+                Text="{Binding LastSavedText}" />
+        </StackPanel>
+
+        <!-- 结果：设备原始回显 + 怎么修 -->
+        <StackPanel Grid.Row="6" Margin="0,10,0,0" Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
+            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="结果（设备原始回显）" />
+            <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding ResultSummary}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsResultSuccess}" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <TextBlock
+                Margin="0,4,0,0"
+                Style="{StaticResource MutedTextStyle}"
+                Text="{Binding ResultHint}"
+                Visibility="{Binding HasResultHint, Converter={StaticResource BoolToVis}}" />
+            <Border
+                MinHeight="96"
+                Margin="0,6,0,0"
+                Background="{StaticResource TerminalBackgroundBrush}"
+                Padding="6">
+                <TextBox
+                    Background="{StaticResource TerminalBackgroundBrush}"
+                    BorderThickness="0"
+                    FontFamily="Consolas, Courier New"
+                    FontSize="13"
+                    Foreground="{StaticResource TerminalForegroundBrush}"
+                    IsReadOnly="True"
+                    Padding="4"
+                    Text="{Binding ResultText, Mode=OneWay}"
+                    TextWrapping="NoWrap"
+                    VerticalContentAlignment="Top"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Auto" />
+            </Border>
+        </StackPanel>
+
+        <!-- 底部按钮：取消在左、危险动作在按住区，这里不放"一键保存" -->
+        <WrapPanel Grid.Row="7" Margin="0,10,0,0">
+            <Button
+                IsCancel="True"
+                Command="{Binding CloseCommand}"
+                Content="取消 / 关闭 (Esc)" />
+            <Button
+                Command="{Binding CopyResultCommand}"
+                Content="复制设备回显"
+                Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}" />
+            <Button
+                Command="{Binding SwitchToMemoryCommand}"
+                Content="{Binding SwitchToMemoryText}"
+                Visibility="{Binding SuggestsMemoryCommand, Converter={StaticResource BoolToVis}}" />
+        </WrapPanel>
+    </Grid>
+</Window>

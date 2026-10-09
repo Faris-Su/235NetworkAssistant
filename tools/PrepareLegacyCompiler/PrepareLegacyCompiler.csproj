@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    仅用于把「本机兼容编译器」下载到 NuGet 缓存：
+    本机 CPU/CET 组合会导致 .NET SDK 自带的 csc.exe 启动即崩溃（0xC0000005），
+    发布脚本会设置 RUJIE_LEGACY_CSC_PATH 使用这里的编译器（见 Directory.Build.props）。
+    该编译器只参与构建，不会进入发布产物。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="4.14.0" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

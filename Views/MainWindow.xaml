@@ -1,0 +1,205 @@
+<Window
+    x:Class="RuijieNetworkAssistant.Views.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="clr-namespace:RuijieNetworkAssistant.Helpers"
+    mc:Ignorable="d"
+    Title="{x:Static helpers:AppInfo.ChineseName}"
+    Width="1280"
+    Height="760"
+    MinWidth="860"
+    MinHeight="480"
+    Background="{StaticResource AppBackgroundBrush}"
+    FontFamily="Microsoft YaHei UI, Segoe UI"
+    FontSize="14"
+    TextOptions.TextFormattingMode="Display"
+    UseLayoutRounding="True">
+
+    <Grid Background="{StaticResource AppBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 顶部设备状态栏：单行、低高度；详细信息放在 ToolTip，避免占用两行 -->
+        <Border
+            Grid.Row="0"
+            Background="{StaticResource PanelBrush}"
+            BorderBrush="{StaticResource BorderBrushSoft}"
+            BorderThickness="0,0,0,1"
+                    Padding="16,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button
+                    Grid.Column="0"
+                    MinWidth="30"
+                    Margin="0,0,6,0"
+                    Padding="6,2"
+                    Command="{Binding ToggleNavigationCommand}"
+                    Content="☰"
+                    ToolTip="折叠 / 展开左侧导航（小窗口会自动折叠）" />
+
+                <TextBlock
+                    Grid.Column="1"
+                    Margin="0,0,10,0"
+                    VerticalAlignment="Center"
+                    FontSize="14"
+                    FontWeight="Bold"
+                    Foreground="{StaticResource AccentBrush}"
+                    Text="{x:Static helpers:AppInfo.ChineseName}"
+                    Visibility="{Binding IsNavigationExpanded, Converter={StaticResource BoolToVis}}" />
+
+                <StackPanel
+                    Grid.Column="2"
+                    Margin="0,0,8,0"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center">
+                    <Border
+                        VerticalAlignment="Center"
+                        Style="{StaticResource ChipStyle}"
+                        ToolTip="{Binding StatusBarTooltip}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock
+                                Margin="0,0,4,0"
+                                FontFamily="Segoe UI Emoji"
+                                VerticalAlignment="Center"
+                                Text="{Binding ConnectionStateIcon}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Text="{Binding CompactDeviceText}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 权限标识：让用户一眼看出现在能不能改配置 -->
+                    <Border
+                        Margin="6,0,0,0"
+                        Style="{StaticResource ChipStyle}"
+                        ToolTip="{Binding PrivilegeTooltip}"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding ShowPrivilege, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock
+                                Margin="0,0,4,0"
+                                FontFamily="Segoe UI Emoji"
+                                VerticalAlignment="Center"
+                                Text="{Binding PrivilegeIcon}" />
+                            <TextBlock VerticalAlignment="Center" Text="{Binding PrivilegeText}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 保存配置（write）：常驻顶栏，随时可点；真正写入要在弹窗里按住 1.2 秒 -->
+                    <Button
+                        Margin="6,0,0,0"
+                        MinWidth="88"
+                        Command="{Binding SaveConfigCommand}"
+                        Content="💾 保存配置"
+                        ToolTip="{Binding SaveConfigHint}"
+                        ToolTipService.ShowOnDisabled="True" />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="3"
+                    MinWidth="72"
+                    Command="{Binding ToggleFocusModeCommand}"
+                    Content="{Binding FocusModeButtonText}"
+                    ToolTip="专注 CLI：隐藏左侧导航与状态栏，把空间让给终端（Ctrl+L）" />
+
+                <TextBlock
+                    Grid.Column="5"
+                    VerticalAlignment="Center"
+                    FontSize="14"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="Ctrl+Alt+C CLI　Ctrl+F 搜索　Ctrl+L 专注"
+                    Visibility="{Binding IsNavigationExpanded, Converter={StaticResource BoolToVis}}" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧导航：小屏自动折叠为仅图标（ToolTip 显示名称） -->
+            <Border
+                Grid.Column="0"
+                Width="{Binding NavigationWidth}"
+                Background="{StaticResource NavSurfaceBrush}"
+                BorderBrush="{StaticResource NavDividerBrush}"
+                BorderThickness="0,0,1,0"
+                Visibility="{Binding IsFocusMode, Converter={StaticResource InverseBoolToVis}}">
+                <ListBox
+                    x:Name="NavigationList"
+                    Margin="0,10,0,0"
+                    ItemContainerStyle="{StaticResource NavItemStyle}"
+                    ItemsSource="{Binding NavigationItems}"
+                    SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
+                    Style="{StaticResource NavListBoxStyle}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel ToolTip="{Binding Title}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock
+                                        Width="22"
+                                        FontFamily="Segoe MDL2 Assets"
+                                        FontSize="16"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding Icon}" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Text="{Binding Title}"
+                                        Visibility="{Binding DataContext.IsNavigationExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <!-- 所有工具都在左侧导航，主区域不再重复显示第二层分页。 -->
+            <ContentControl
+                Grid.Column="1"
+                Margin="16,12,16,12"
+                Content="{Binding CurrentViewModel}" />
+        </Grid>
+
+        <!-- 底部状态栏：专注模式下隐藏，让 CLI 得到最大垂直空间 -->
+        <Border
+            Grid.Row="2"
+            Background="{StaticResource PanelBrush}"
+            BorderBrush="{StaticResource BorderBrushSoft}"
+            BorderThickness="0,1,0,0"
+            Padding="16,6"
+            Visibility="{Binding IsFocusMode, Converter={StaticResource InverseBoolToVis}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Grid.Column="0"
+                    FontSize="14"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="{Binding StatusMessage}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                    Grid.Column="1"
+                    FontSize="14"
+                    Foreground="{StaticResource TextMutedBrush}"
+                    Text="{Binding CurrentTimeText}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
