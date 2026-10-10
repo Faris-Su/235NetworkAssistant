@@ -60,6 +60,7 @@ public sealed class ConnectionViewModel : ViewModelBase
         ConnectSerialCommand = new AsyncRelayCommand(ConnectSerialAsync, () => !IsBusy);
         ConnectTelnetCommand = new AsyncRelayCommand(ConnectTelnetAsync, () => !IsBusy);
         ConnectSshCommand = new AsyncRelayCommand(ConnectSshAsync, () => !IsBusy);
+        ManageSshHostKeysCommand = new RelayCommand(() => SshHostKeyManagerRequested?.Invoke(this, EventArgs.Empty));
         DisconnectCommand = new AsyncRelayCommand(
             DisconnectAsync,
             () => !IsBusy && _connections.State != DeviceConnectionState.Disconnected);
@@ -70,6 +71,10 @@ public sealed class ConnectionViewModel : ViewModelBase
         // NotSupportedException，异常还会冒回 ApplyImportAsync 的 Task，界面显示"写入失败"但数据其实已落盘。
         _repository.Changed += (_, _) => UiThread.Post(RefreshAddressBook);
     }
+
+    public event EventHandler<SshHostKeyConfirmationRequestEventArgs>? SshHostKeyConfirmationRequested;
+
+    public event EventHandler? SshHostKeyManagerRequested;
 
     public SerialConnectionSettings Serial { get; }
 
@@ -383,6 +388,8 @@ public sealed class ConnectionViewModel : ViewModelBase
 
     public AsyncRelayCommand ConnectSshCommand { get; }
 
+    public RelayCommand ManageSshHostKeysCommand { get; }
+
     public AsyncRelayCommand DisconnectCommand { get; }
 
     protected override async Task OnInitializeAsync()
@@ -635,7 +642,7 @@ public sealed class ConnectionViewModel : ViewModelBase
         _shell.ReportStatus($"地址簿：SSH 连接 {record.LocationText} {ip} …");
         var privilege = BuildPrivilegeRequest();
         await ConnectAsync(
-            () => _connections.ConnectSshAsync(Ssh, CancellationToken.None, privilege),
+            () => ConnectSshWithTrustAsync(privilege),
             $"SSH {ip}（{record.LocationText}）",
             privilege).ConfigureAwait(true);
 
@@ -685,9 +692,45 @@ public sealed class ConnectionViewModel : ViewModelBase
     {
         var privilege = BuildPrivilegeRequest();
         return ConnectAsync(
-            () => _connections.ConnectSshAsync(Ssh, CancellationToken.None, privilege),
+            () => ConnectSshWithTrustAsync(privilege),
             $"SSH {Ssh.Host}",
             privilege);
+    }
+
+    private async Task ConnectSshWithTrustAsync(PrivilegeRequest privilege)
+    {
+        var host = SshHostKeyTrustStore.NormalizeHost(Ssh.Host);
+        var workflow = new SshHostKeyTrustWorkflow(AppServices.SshHostKeys);
+        await workflow.EnsureTrustedAsync(
+            host,
+            Ssh.Port,
+            ct => AppServices.SshHostKeyProbe.ProbeAsync(host, Ssh.Port, Ssh.ConnectionTimeoutMs, ct),
+            async candidate => await RequestSshHostKeyTrustAsync(candidate).ConfigureAwait(true))
+            .ConfigureAwait(true);
+
+        await _connections.ConnectSshAsync(Ssh, CancellationToken.None, privilege).ConfigureAwait(true);
+    }
+
+    private async Task<bool> RequestSshHostKeyTrustAsync(SshHostKeyInfo candidate)
+    {
+        var handler = SshHostKeyConfirmationRequested;
+        if (handler is null)
+        {
+            throw new SshHostKeyTrustException(
+                "SSH 主机密钥确认界面尚未就绪，已停止连接；未发送登录凭据，也未保存信任记录。");
+        }
+
+        var request = new SshHostKeyConfirmationRequestEventArgs(candidate);
+        handler.Invoke(this, request);
+        var accepted = await request.Decision.ConfigureAwait(true);
+        if (request.Failure is { } failure)
+        {
+            throw new SshHostKeyTrustException(
+                $"无法显示 SSH 主机密钥确认框，已停止连接：{failure.Message}",
+                failure);
+        }
+
+        return accepted;
     }
 
     private async Task ConnectAsync(Func<Task> connect, string description, PrivilegeRequest privilege)
@@ -714,6 +757,13 @@ public sealed class ConnectionViewModel : ViewModelBase
                 string.IsNullOrEmpty(ConnectNotice)
                     ? $"{description}｜{_connections.PrivilegeText}"
                     : $"{description}：{ConnectNotice}｜{_connections.PrivilegeText}");
+        }
+        catch (SshHostKeyTrustCancelledException ex)
+        {
+            StateText = "未连接";
+            ErrorText = string.Empty;
+            ConnectNotice = ex.Message;
+            _shell.ReportStatus(ex.Message);
         }
         catch (Exception ex)
         {

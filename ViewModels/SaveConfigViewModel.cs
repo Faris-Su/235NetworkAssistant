@@ -80,7 +80,7 @@ public sealed class SaveConfigViewModel : ObservableObject
     {
         DeviceConnectionKind.Serial => "Console / 配置线",
         DeviceConnectionKind.Telnet => "Telnet",
-        DeviceConnectionKind.Ssh => "SSH（预留）",
+        DeviceConnectionKind.Ssh => "SSH",
         _ => "未连接",
     };
 

@@ -6,8 +6,13 @@ namespace RuijieNetworkAssistant.Services;
 public sealed class DeviceConnectionFactory
 {
     private readonly ILogService _log;
+    private readonly SshHostKeyTrustStore _sshHostKeys;
 
-    public DeviceConnectionFactory(ILogService log) => _log = log;
+    public DeviceConnectionFactory(ILogService log, SshHostKeyTrustStore sshHostKeys)
+    {
+        _log = log;
+        _sshHostKeys = sshHostKeys;
+    }
 
     public IDeviceConnection Create(
         DeviceConnectionKind kind,
@@ -23,7 +28,8 @@ public sealed class DeviceConnectionFactory
             _log),
         DeviceConnectionKind.Ssh => new SshDeviceConnection(
             ssh ?? throw new ArgumentNullException(nameof(ssh), "缺少 SSH 参数。"),
-            _log),
+            _log,
+            _sshHostKeys),
         _ => throw new NotSupportedException($"暂不支持 {kind} 连接方式。"),
     };
 }

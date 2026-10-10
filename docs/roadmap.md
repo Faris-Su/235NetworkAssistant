@@ -191,4 +191,4 @@ LLDP 邻居的 `Management address` 多地址情况、`show interface status` �
 - V0.2：链路聚合、端口镜像、SVI/管理 IP、STP、更完整 LLDP Link Tracing、设备能力自动识别
   （**已交付部分**：SNMP 独立模块与信息库、LLDP 默认取 Detail、Ping / Tracert 网络工具）
 - V0.3：DHCP、ACL、端口安全、ARP 防护、BPDU Guard、VRRP、静态路由
-- 未来：SSH、多设备会话、多设备批量操作、配置 Diff、设备模板、更完整的资源库管理、更多锐捷型号
+- 未来：多设备会话、多设备批量操作、配置 Diff、设备模板、更完整的资源库管理、更多锐捷型号

@@ -15,23 +15,24 @@ namespace RuijieNetworkAssistant.Services;
 ///   · 认证后没看到 CLI 提示符     → MarkCliNotReady()，**不是连接失败**；
 ///   · 只有 TCP/SSH/认证本身失败   才抛异常（界面显示“连接失败”）。
 ///
-/// 主机密钥：网络设备没有可维护的 known_hosts，这里按“首次信任”处理（不阻断连接），
-/// 但会把算法/位数/指纹写进日志，事后可以核对是不是被换过。
+/// 主机密钥：只接受本地独立信任库中的精确公钥匹配；未知或变化的密钥均在 SSH 认证前拒绝。
 /// </summary>
 public sealed partial class SshDeviceConnection : DeviceConnectionBase
 {
     private readonly SshConnectionSettings _settings;
     private readonly ILogService _log;
+    private readonly SshHostKeyTrustStore _hostKeyTrustStore;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private SshClient? _client;
     private ShellStream? _shell;
     private Task? _readLoop;
 
-    public SshDeviceConnection(SshConnectionSettings settings, ILogService log)
+    public SshDeviceConnection(SshConnectionSettings settings, ILogService log, SshHostKeyTrustStore hostKeyTrustStore)
         : base(log)
     {
         _settings = settings.Clone();
         _log = log;
+        _hostKeyTrustStore = hostKeyTrustStore;
         CommandTimeoutMs = _settings.CommandTimeoutMs;
         IdleQuietMs = _settings.IdleQuietMs;
     }
@@ -53,27 +54,28 @@ public sealed partial class SshDeviceConnection : DeviceConnectionBase
             throw new InvalidOperationException("没有填写 SSH 用户名。锐捷设备需要先配置 SSH 登录账号（username ... password ...）。");
         }
 
+        var trustedKey = await _hostKeyTrustStore.FindAsync(_settings.Host, _settings.Port, cancellationToken)
+            .ConfigureAwait(false);
+        SshHostKeyInfo? presentedKey = null;
+        var hostKeyDecision = trustedKey is null ? SshHostKeyDecision.Unknown : SshHostKeyDecision.Match;
+
         var client = new SshClient(BuildConnectionInfo())
         {
             // 设备端空闲断连很常见（vty timeout），保活避免扫表扫到一半掉线。
             KeepAliveInterval = TimeSpan.FromSeconds(30),
         };
-        // 用 lambda 而不是具名方法：HostKeyEventArgs 在 SSH.NET 里属于 Common 命名空间，
-        // 少一个 using 就少一处编译耦合。
         client.HostKeyReceived += (_, e) =>
         {
-            try
-            {
-                _log.Info(
-                    $"SSH 主机密钥：{e.HostKeyName} {e.KeyLength} 位，指纹 {e.FingerPrintSHA256}" +
-                    "（网络设备没有 known_hosts，本次按首次信任处理；如指纹与设备实际不符请立即断开）");
-            }
-            catch (Exception ex)
-            {
-                _log.Debug($"记录 SSH 主机密钥指纹失败：{ex.Message}");
-            }
-
-            e.CanTrust = true;
+            presentedKey = new SshHostKeyInfo(
+                SshHostKeyTrustStore.NormalizeHost(_settings.Host),
+                _settings.Port,
+                e.HostKeyName,
+                e.KeyLength,
+                "SHA256:" + e.FingerPrintSHA256,
+                Convert.ToBase64String(e.HostKey),
+                DateTimeOffset.UtcNow);
+            hostKeyDecision = SshHostKeyTrustPolicy.Evaluate(trustedKey, presentedKey);
+            e.CanTrust = hostKeyDecision == SshHostKeyDecision.Match;
         };
 
         try
@@ -94,6 +96,20 @@ public sealed partial class SshDeviceConnection : DeviceConnectionBase
             }
 
             _log.Warn($"SSH 连接失败：{_settings.Host}:{_settings.Port}", ex);
+            if (presentedKey is not null && hostKeyDecision == SshHostKeyDecision.Unknown)
+            {
+                throw new SshHostKeyTrustException(
+                    $"SSH 设备尚未建立信任。已拒绝认证。\n设备：{presentedKey.Host}:{presentedKey.Port}\n" +
+                    $"算法：{presentedKey.Algorithm}（{presentedKey.KeyLength} 位）\n" +
+                    $"SHA256 指纹：{presentedKey.FingerprintSha256}\n" +
+                    "请先通过 Console 或其他可信渠道核验指纹，再重新连接。", ex);
+            }
+
+            if (presentedKey is not null && trustedKey is not null && hostKeyDecision == SshHostKeyDecision.Changed)
+            {
+                throw new SshHostKeyChangedException(trustedKey, presentedKey);
+            }
+
             throw new InvalidOperationException(
                 ConnectionDiagnostics.DescribeSshFailure(
                     _settings.Host,

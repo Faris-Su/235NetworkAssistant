@@ -7,7 +7,7 @@
 | 正式中文名称 | 235修网助手 |
 | 正式英文名称 | 235 Network Assistant |
 | 内部名称 / 程序集名 / EXE | 235NetworkAssistant / 235NetworkAssistant.exe |
-| 版本 | V0.1.0（AssemblyVersion 0.1.0.0 / FileVersion 0.1.0.0 / InformationalVersion 0.1.0） |
+| 当前版本 | V1.0（AssemblyVersion 1.0.0.0 / FileVersion 1.0.0.0 / InformationalVersion 1.0） |
 | 开发者 / 版权 | 235修网助手团队 / © 2026 235修网助手团队 |
 
 命名做法与原因（最小修改原则）：
@@ -31,8 +31,8 @@
 | --- | --- |
 | 文件说明 (File Description) | 235修网助手 |
 | 产品名称 (Product Name) | 235 Network Assistant |
-| 产品版本 (Product Version) | 0.1.0 |
-| 文件版本 (File Version) | 0.1.0.0 |
+| 产品版本 (Product Version) | 1.0 |
+| 文件版本 (File Version) | 1.0.0.0 |
 | 内部名称 (Internal Name) | 235NetworkAssistant.dll |
 | 原始文件名 (Original Filename) | 235NetworkAssistant.dll |
 | 公司 (Company) | 235 Network Assistant Team |
@@ -111,7 +111,7 @@ RuijieNetworkAssistant/
 - `DeviceName` / `ManagementAddress` / `Kind`
 - `IAsyncDisposable`
 
-实现：`SerialDeviceConnection`、`TelnetDeviceConnection`；预留 `SshDeviceConnection`。
+实现：`SerialDeviceConnection`、`TelnetDeviceConnection`、`SshDeviceConnection`。
 CLI 页面与命令执行只依赖接口，不关心底层链路。
 
 资源生命周期要求：

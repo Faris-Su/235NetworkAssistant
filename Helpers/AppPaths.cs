@@ -17,6 +17,9 @@ public static class AppPaths
 
     public static string SettingsFile => Path.Combine(RootDirectory, "settings.json");
 
+    /// <summary>SSH 主机公钥信任清单；独立于设置文件与任何登录凭据。</summary>
+    public static string SshTrustedHostsFile => Path.Combine(RootDirectory, "ssh-trusted-hosts.json");
+
     public static string ResourceDatabaseFile => Path.Combine(RootDirectory, "resources.json");
 
     public static string BackupDirectory => Path.Combine(RootDirectory, "backups");

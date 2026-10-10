@@ -221,7 +221,7 @@ public sealed class MainViewModel : ViewModelBase, IShellNavigator
     {
         DeviceConnectionKind.Serial => "Console / Serial",
         DeviceConnectionKind.Telnet => "Telnet",
-        DeviceConnectionKind.Ssh => "SSH（预留）",
+        DeviceConnectionKind.Ssh => "SSH",
         _ => "未连接",
     };
 

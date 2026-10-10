@@ -1,0 +1,62 @@
+<Window
+    x:Class="RuijieNetworkAssistant.Views.SshHostKeyTrustWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:helpers="clr-namespace:RuijieNetworkAssistant.Helpers"
+    Title="SSH 已信任设备"
+    Width="980"
+    Height="520"
+    MinWidth="720"
+    MinHeight="380"
+    Background="{StaticResource AppBackgroundBrush}"
+    FontFamily="Microsoft YaHei UI, Segoe UI"
+    FontSize="14"
+    TextOptions.TextFormattingMode="Display"
+    WindowStartupLocation="CenterOwner">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Style="{StaticResource PageTitleStyle}" Text="SSH 已信任设备" />
+        <StackPanel Grid.Row="1" Margin="0,6,0,8">
+            <TextBlock Style="{StaticResource MutedTextStyle}" Text="主机公钥保存在独立信任库；不包含 SSH 用户名、密码或私钥。更新前必须通过 Console 或其他可信渠道核验指纹。" TextWrapping="Wrap" />
+            <TextBlock Margin="0,3,0,0" Style="{StaticResource MutedTextStyle}" Text="{Binding StorePath, StringFormat=信任库：{0}}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Margin="0,4,0,0" Foreground="{StaticResource DangerBrush}" Text="{Binding ErrorText}" TextWrapping="Wrap" Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}" />
+        </StackPanel>
+
+        <DataGrid
+            Grid.Row="2"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            IsReadOnly="True"
+            ItemsSource="{Binding TrustedKeys}"
+            SelectedItem="{Binding SelectedKey, Mode=TwoWay}"
+            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            EnableRowVirtualization="True"
+            VirtualizingPanel.VirtualizationMode="Recycling">
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding Host}" Header="设备地址" Width="160" />
+                <DataGridTextColumn Binding="{Binding Port}" Header="端口" Width="64" />
+                <DataGridTextColumn Binding="{Binding Algorithm}" Header="算法" Width="145" />
+                <DataGridTextColumn Binding="{Binding KeyLength}" Header="位数" Width="64" />
+                <DataGridTextColumn Binding="{Binding FingerprintSha256}" Header="SHA256 指纹" Width="*" MinWidth="260" />
+                <DataGridTextColumn Binding="{Binding ObservedAt, StringFormat={}{0:yyyy-MM-dd HH:mm}}" Header="记录时间" Width="140" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <DockPanel Grid.Row="3" Margin="0,8,0,0" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Command="{Binding RefreshCommand}" Content="刷新" />
+                <Button Command="{Binding UpdateSelectedCommand}" Content="核验并更新所选公钥" Style="{StaticResource PrimaryButtonStyle}" />
+                <Button Command="{Binding RemoveSelectedCommand}" Content="删除信任" Style="{StaticResource DangerButtonStyle}" />
+                <Button Click="Close_Click" Content="关闭" />
+            </StackPanel>
+            <TextBlock Margin="2,0,8,0" VerticalAlignment="Center" Style="{StaticResource MutedTextStyle}" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+    </Grid>
+</Window>

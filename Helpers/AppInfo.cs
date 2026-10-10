@@ -30,10 +30,10 @@ public static class AppInfo
     public const string CompatibilityNote =
         "支持部分锐捷交换机 CLI 操作，具体命令以设备型号及固件版本为准。本软件为第三方运维辅助工具，与设备厂商无隶属关系。";
 
-    /// <summary>版本号（0.1.0），来自程序集 InformationalVersion。</summary>
+    /// <summary>产品版本号（1.0），来自程序集 InformationalVersion。</summary>
     public static string Version { get; } = ResolveVersion();
 
-    /// <summary>UI 显示用版本（V0.1.0）。</summary>
+    /// <summary>UI 显示用版本（V1.0）。</summary>
     public static string DisplayVersion => "V" + Version;
 
     /// <summary>概览页右下角低调标识。</summary>
@@ -48,7 +48,7 @@ public static class AppInfo
         var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         if (!string.IsNullOrWhiteSpace(informational))
         {
-            // 去掉 +build 之类的后缀，保证 UI / 文档 / 元数据统一为 0.1.0
+            // 去掉 +build 之类的后缀，保证 UI 显示稳定的产品版本号。
             var version = informational.Split('+')[0].Trim();
             if (version.Length > 0)
             {
@@ -57,6 +57,6 @@ public static class AppInfo
         }
 
         var fileVersion = assembly.GetName().Version;
-        return fileVersion is null ? "0.1.0" : $"{fileVersion.Major}.{fileVersion.Minor}.{fileVersion.Build}";
+        return fileVersion is null ? "1.0" : $"{fileVersion.Major}.{fileVersion.Minor}";
     }
 }

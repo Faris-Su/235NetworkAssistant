@@ -20,6 +20,10 @@ public static class AppServices
 
     public static ConnectionService Connections { get; private set; } = null!;
 
+    public static SshHostKeyTrustStore SshHostKeys { get; private set; } = null!;
+
+    public static SshHostKeyProbe SshHostKeyProbe { get; } = new();
+
     public static CommandService Commands { get; private set; } = null!;
 
     public static BackupService Backup { get; private set; } = null!;
@@ -82,7 +86,8 @@ public static class AppServices
             ? level
             : LogLevel.Info;
 
-        var factory = new DeviceConnectionFactory(Log);
+        SshHostKeys = new SshHostKeyTrustStore(Log);
+        var factory = new DeviceConnectionFactory(Log, SshHostKeys);
         Connections = new ConnectionService(factory, Log);
         Commands = new CommandService(Connections, Log);
         Backup = new BackupService(Commands, Connections, Log);

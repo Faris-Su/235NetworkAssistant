@@ -6,7 +6,7 @@
 | --- | --- |
 | 正式名称 | 235修网助手（235 Network Assistant） |
 | 程序 / EXE | 235NetworkAssistant.exe |
-| 当前版本 | **V0.2.0** |
+| 当前版本 | **V1.0** |
 | 开发者 / 版权 | 235修网助手团队 / © 2026 235修网助手团队 |
 
 > 本软件是**第三方运维辅助工具**，与设备厂商无隶属关系；支持部分锐捷交换机 CLI 操作，
@@ -612,8 +612,6 @@ A：不会。终端是只读控件，光标只表示"下一个字符会出现在
 
 ### 8.2 还没验证到的（下一版补）
 
-- **SSH**：已在真实锐捷设备上验证：连接 → 提示符 → 自动 `enable` 到 `#` → `show version` 正常；具体型号与软件版本已省略。
-  前提是设备上先 `enable service ssh-server` 并有本地账号；另外首次连接**不校验主机密钥**（见 8.2.3）。
 - **Telnet NAWS（把窗口尺寸告诉设备）**：**已验证设备会接受协商，收益未证实**。具体型号已省略。
   （日志有 `设备接受了 NAWS`），但同一条 `show running-config` 的翻页次数：Console（无 NAWS）**2 页**、
   Telnet（NAWS 200×60）**3 页** —— 方向与预期相反，说明设备的分页没有按我们报的行数走。
@@ -621,24 +619,17 @@ A：不会。终端是只读控件，光标只表示"下一个字符会出现在
   除非现场出现"大配置翻页翻不完/翻错"的实测案例。
 - **粘贴多行确认 / 退格发 DEL / 保活 / DTR-RTS** 四项：功能已实现且有自检覆盖，还差人工手感确认。
 
-### 8.2.1 构建时的依赖告警（已评估，不受影响）
+### 8.2.1 SSH.NET 依赖
 
-`dotnet build` 会报两条 **NU1903 高危告警**，都来自唯一的外部依赖 `SSH.NET 2025.1.0`：
+项目已升级至 `SSH.NET 2026.0.0`。旧版 `2025.1.0` 有安全公告，修复版本为 `2026.0.0`：
 
 | 公告 | 影响面 | 我们的情况 |
 | --- | --- | --- |
 | [GHSA-q939-rpr3-3284](https://github.com/advisories/GHSA-q939-rpr3-3284)（High 7.1） | `ScpClient.Download(..., recursive)` 递归下载时，服务端返回的文件名含 `../` 可写到目标目录之外 | **未使用** SCP 相关 API |
 | [GHSA-mggc-4xg6-vcxf](https://github.com/advisories/GHSA-mggc-4xg6-vcxf)（High 7.5） | `ScpClient` 远端路径未按 shell 规则转义 → 服务端可被执行注入 | **未使用** SCP 相关 API |
+| [GHSA-h5q6-2gr6-3g3m](https://github.com/sshnet/SSH.NET/security/advisories/GHSA-h5q6-2gr6-3g3m)（High） | SSH 版本标识阶段可导致预认证内存持续增长 | 已通过升级到 `2026.0.0` 修复 |
 
-依据（可复核）：全仓库检索 `ScpClient` / `ScpClient` 相关调用为 **0 处**，SSH 实现只用 `SshClient`
-（`Services/SshDeviceConnection.cs`，交互式 shell）+ `Renci.SshNet.Common` 的异常类型。
-另外上游**当前没有修复版本**：NuGet 上 `SSH.NET` 最新就是 `2025.1.0`（公告标注修复版本为 `2026.0.0`，尚未发布）。
-
-⇒ 结论：**本工具不受这两条公告影响**；等上游发布 `2026.0.0` 后再升级即可（升级后建议重跑一次真机 SSH 验收）。
-
-**传递依赖也扫过一遍**：`SSH.NET` 会带入 `BouncyCastle.Cryptography 2.6.2`。
-`dotnet list package --vulnerable --include-transitive` 的结果里**只有 `SSH.NET` 被标记**，
-`BouncyCastle` 当前不在告警列表内。等升级 SSH.NET 时，连带复核一次它的版本即可。
+项目只使用 SSH.NET 的 `SshClient` 交互式 shell，不调用 SCP/SFTP；升级后 Debug 构建通过。SSH 仍应在目标设备上回归验证算法协商与 CLI 行为。
 
 ### 8.2.2 写配置的兜底到什么程度（使用前请知情）
 
@@ -656,10 +647,11 @@ A：不会。终端是只读控件，光标只表示"下一个字符会出现在
 **建议的现场姿势**：改配置前先点【备份】页备份（或记住"重启即回滚"这条底线）；
 改完用"配置对比"核对；重要改动在操作台账（`operations-yyyyMMdd.csv`）里能查到**实际下发的命令**。
 
-### 8.2.3 SSH 不校验主机密钥
+### 8.2.3 SSH 主机密钥验证
 
-首次连接 SSH 设备时**静默信任**并只把指纹记进日志（详见 `docs/`）。
-在企业内网直连自己设备时可接受；如果链路会经过不可信网络，请先用别的方式核对设备指纹。
+首次连接未知 SSH 设备时，程序会先获取并拒绝未验证的握手，再显示 IP、端口、密钥算法和 SHA256 指纹；用户确认已通过 Console 或其他可信渠道核验后，才保存公钥并继续登录。取消不会保存记录，也不会发送登录凭据。
+
+后续连接只接受与本地记录完全匹配的公钥。公钥变化会中止连接，并显示旧、新指纹；请通过可信渠道核验后，在【连接 → SSH → 管理已信任设备】更新或删除记录。信任库独立保存在 `%LocalAppData%\235NetworkAssistant\ssh-trusted-hosts.json`，只包含公开主机密钥，不保存账号、密码或私钥。信任库损坏时连接会被拒绝，程序不会自动用空列表覆盖。
 
 ### 8.3 明确不做的
 
@@ -674,6 +666,7 @@ A：不会。终端是只读控件，光标只表示"下一个字符会出现在
 ```
 %LocalAppData%\235NetworkAssistant\
 ├── settings.json      应用设置（终端缓冲、备份目录、日志等级、连接参数）
+├── ssh-trusted-hosts.json SSH 主机公钥信任清单（不含登录凭据）
 ├── resources.json     本地资源库（导入后的交换机 / VLAN / 场所数据）
 ├── snmp-devices.json  SNMP 设备信息库（按 IP 保存的查询结果 + 最近 100 次快照）
 ├── backups\           配置备份（设备名_YYYYMMDD_HHmmss.cfg）
@@ -756,6 +749,13 @@ dotnet build .\RuijieNetworkAssistant.csproj -c Debug
 ---
 
 ## 11. 版本历史
+
+### V1.0 — 首个稳定正式版（2026-10-09）
+
+- 产品显示版本统一为 **V1.0**；程序集 / 文件版本为 **1.0.0.0**，产品元数据版本为 **1.0**。
+- 支持配置线 Console、Telnet、SSH；SSH 首次连接显示主机公钥 SHA256 指纹，用户确认后才保存信任并继续登录；已信任密钥变化时拒绝连接。
+- SSH 首次信任与连接已在可用设备上实测；首次确认、取消、密钥匹配/变化、信任记录损坏及信任记录管理等自动测试通过。
+- 保留现有 VLAN、Trunk、端口、LLDP、MAC/IP、SNMP、QuickPing、设备信息、备份、资源库与命令预览/确认功能。
 
 ### V0.2.1 — SNMP 独立模块 + 体验修正
 
